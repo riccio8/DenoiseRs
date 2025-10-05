@@ -31,6 +31,9 @@ pub mod bm3d;
 /// public api for BM3D denoise operations
 pub use bm3d::denoise;
 
+/// public api for bm3d errors
+pub mod error;
+
 /// parameters for BM3D denoise operations
 pub struct Bm3d {
     /// estimated noise level
