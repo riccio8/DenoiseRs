@@ -106,6 +106,7 @@ checksum = "6099cdc01846bc367c4e7dd630dc5966dccf36b652fae7a74e17b640411a91b2"
 name = "bm3d_rs"
 version = "0.1.0"
 dependencies = [
+ "fmt",
  "image",
  "ndarray",
  "num_cpus",
@@ -316,6 +317,12 @@ dependencies = [
  "crc32fast",
  "miniz_oxide",
 ]
+
+[[package]]
+name = "fmt"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09904adae26440d46daeacb5ed7922fee69d43ebf84d31e078cd49652cecd718"
 
 [[package]]
 name = "getrandom"
