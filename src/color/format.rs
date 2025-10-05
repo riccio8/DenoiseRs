@@ -69,7 +69,7 @@ impl Bm3dImage {
         
         Ok(DynamicImage::ImageRgb8(
             ImageBuffer::from_raw(width as u32, height as u32, data)
-                .ok_or_else(|e| ImageProcessingError::UnsupportedFormat(e.into()))
+                .ok_or_else(|| ImageProcessingError::UnsupportedFormat("Invalid raw buffer".into()))?
         ))
     }
     
