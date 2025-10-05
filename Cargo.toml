@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+image = "0.25"
+ndarray = "0.16.1"
+rayon = "1.11.0"
+rustdct = "0.7"
+palette = "0.7"
