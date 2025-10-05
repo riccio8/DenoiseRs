@@ -1,5 +1,6 @@
 //! BM3D_rs implementation
 
+#![warn(non_snake_case)]    
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![deny(clippy::all)]
