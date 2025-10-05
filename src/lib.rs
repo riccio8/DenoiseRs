@@ -1,4 +1,4 @@
-//! BM3D_rs implementation
+//! bm3d_rs implementation
 
 #![warn(non_snake_case)]    
 #![forbid(unsafe_code)]
@@ -32,7 +32,7 @@ pub mod bm3d;
 pub use bm3d::denoise;
 
 /// parameters for BM3D denoise operations
-pub struct Bm3dParams {
+pub struct Bm3d {
     /// estimated noise level
     pub sigma: f32,       
     /// threshold weight

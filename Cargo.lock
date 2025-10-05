@@ -3,17 +3,6 @@
 version = 4
 
 [[package]]
-name = "BM3D_rs"
-version = "0.1.0"
-dependencies = [
- "image",
- "ndarray",
- "palette",
- "rayon",
- "rustdct",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -112,6 +101,18 @@ name = "bitstream-io"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6099cdc01846bc367c4e7dd630dc5966dccf36b652fae7a74e17b640411a91b2"
+
+[[package]]
+name = "bm3d_rs"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "ndarray",
+ "palette",
+ "rayon",
+ "rustdct",
+ "yuv",
+]
 
 [[package]]
 name = "built"
@@ -1284,6 +1285,15 @@ name = "wit-bindgen"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
+
+[[package]]
+name = "yuv"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30078f3e5790a2127f89c57c4ccb46d060205bf2c4c267f77cd08fb5c02c6d79"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "zerocopy"
