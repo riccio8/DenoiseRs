@@ -33,7 +33,7 @@ impl Bm3dParams {
 impl Bm3dImage {
     /// constructor for Bm3dImage struct
     pub fn new(
-        image: &DynamicImage,
+        image: DynamicImage,
         params: Bm3dParams,
     ) -> Self {
         Self {

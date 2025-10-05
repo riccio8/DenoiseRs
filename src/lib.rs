@@ -54,11 +54,11 @@ pub struct Bm3dParams {
 }
 
 
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug)]
 /// BM3D image wrapper
 pub struct Bm3dImage {
     /// image descriptor
-    image: &DynamicImage,
+    image: DynamicImage,
     /// image parameters for denoise
     params: Bm3dParams,
 }
