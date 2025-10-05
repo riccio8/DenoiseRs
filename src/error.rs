@@ -3,12 +3,19 @@ use std::fmt;
 /// Central error handling for image processing operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImageProcessingError {
+    /// Error in color conversion
     ColorConversionError,
+    /// Error in discrete cosine transform (DCT)
     DctError,
+    /// Error in wavelet transform
     WaveletError,
-    InvalidParameter(&'static str), // e.g. window size, threshold
-    OutOfBounds(&'static str),      // e.g. pixel index, patch index
-    UnsupportedFormat(&'static str), // e.g. image format
+    /// Invalid parameter, e.g. window size, threshold
+    InvalidParameter(&'static str),
+    /// Access out of bounds, e.g. pixel index, patch index
+    OutOfBounds(&'static str),
+    /// Unsupported image format
+    UnsupportedFormat(&'static str),
+    /// Other error
     Other(&'static str),
 }
 

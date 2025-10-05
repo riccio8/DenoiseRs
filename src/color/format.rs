@@ -1,6 +1,13 @@
 //! conversion functions from rgb to YCbCr color space, if luminance_only is true working only on Y channel,
 //! otherwise working on all channels.
 use crate::Bm3d;
+use crate::error::ImageProcessingError;
+use image::{DynamicImage, ImageBuffer, Rgb};
+use zune_image::{
+    image::Image, 
+    codecs::bmp::zune_core::colorspace::ColorSpace, 
+};
+
 
 impl Bm3d {
     /// constructor for Bm3d struct
@@ -21,45 +28,59 @@ impl Bm3d {
             mix,
         }
     }
-
-    /// conversion functions from rgb to YCbCr color space, if luminance_only is true working only on Y channel,
-    /// otherwise working on all channels.
-    #[inline(always)]
-    pub fn rgb_to_ycbcr(&self, r: u8, g: u8, b: u8) -> Result<(u8, u8, u8), > {
-        // Use integer arithmetic instead of float for maximum speed
-        let r = r as i32;
-        let g = g as i32;
-        let b = b as i32;
-
-        let y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
-        let cb = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
-        let cr = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+    
+    /// Convert a DynamicImage to YCbCr color space using Zune Image library.
+    pub fn convert_dynamic_to_ycbcr(dynamic_img: &DynamicImage) -> Result<Image, ImageProcessingError> {
+        let rgb_img = dynamic_img.to_rgb8();
+        let (width, height) = rgb_img.dimensions();
         
-        if self.luminance_only {
-            Ok((y.clamp(0, 255) as u8, 0, 0))
-        } else {
-            Ok((
-                y.clamp(0, 255) as u8,
-                cb.clamp(0, 255) as u8,
-                cr.clamp(0, 255) as u8,
-            ))
-        }
+        let mut zune_img = Image::from_u8(
+            &rgb_img,
+            width as usize, 
+            height as usize,
+            ColorSpace::RGB
+        );
+
+        zune_img.convert_color(ColorSpace::YCbCr).map_err(|_| ImageProcessingError::ColorConversionError)?;
+        Ok(zune_img)
+    }
+
+    /// Convert a DynamicImage to Zune Image format using Zune Image library.
+    pub fn dynamic_to_zune(dynamic_img: &image::DynamicImage) -> Image {
+        let rgb_img = dynamic_img.to_rgb8();
+        let (width, height) = rgb_img.dimensions();
+        
+        Image::from_u8(
+            &rgb_img,  // &[u8] default from rgb image
+            width as usize,
+            height as usize,
+            ColorSpace::RGB
+        )
     }
     
-    #[inline(always)]
-    pub fn ycbcr_to_rgb(&self, r: f32, g: f32, b: f32, y: f32) -> (u8, u8, u8) {
-        let y = y as i32;
-        let cb = g as i32;
-        let cr = b as i32;
-
-        let mut r = ((298 * y + 409 * cr + 128) >> 8) - 222;
-        let mut g = ((298 * y - 100 * cb - 208 * cr + 128) >> 8) + 135;
-        let mut b = ((298 * y + 516 * cb + 128) >> 8) - 276;
-
-        r = r.clamp(0, 255);
-        g = g.clamp(0, 255);
-        b = b.clamp(0, 255);
-
-        (r as u8, g as u8, b as u8)
+    /// Convert a Vec<u8> to Zune Image format using Zune Image library.
+    pub fn vec_to_zune(
+        data: Vec<u8>,
+        width: usize, 
+        height: usize,
+        colorspace: ColorSpace
+    ) -> Image {
+        Image::from_u8(&data, width, height, colorspace)
     }
+    
+    pub fn convert_ycbcr_to_dynamic(zune_img: &Image) -> DynamicImage {
+        let mut img_clone = zune_img.clone();
+        
+        img_clone.convert_color(ColorSpace::RGB).unwrap();
+        
+        let (width, height) = img_clone.dimensions();
+        let data = img_clone.flatten_to_u8().remove(0); 
+        
+        DynamicImage::ImageRgb8(
+            ImageBuffer::from_raw(width as u32, height as u32, data)
+                .expect("Invalid dimensions")
+        )
+    }
+
+    // will implement conversion functions from rgb to YCbCr color space manually
 }
