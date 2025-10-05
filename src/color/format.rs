@@ -59,18 +59,18 @@ impl Bm3dImage {
     }
     
     /// convert YCbCr to DynamicImage
-    pub fn convert_ycbcr_to_dynamic(zune_img: &Image) -> DynamicImage {
+    pub fn convert_ycbcr_to_dynamic(zune_img: Image) -> Result<DynamicImage, ImageProcessingError> {
         let mut img_clone = zune_img.clone();
         
-        img_clone.convert_color(ColorSpace::RGB).unwrap();
+        img_clone.convert_color(ColorSpace::RGB).map_err(|_| ImageProcessingError::ColorConversionError)?;
         
         let (width, height) = img_clone.dimensions();
         let data = img_clone.flatten_to_u8().remove(0); 
         
-        DynamicImage::ImageRgb8(
+        Ok(DynamicImage::ImageRgb8(
             ImageBuffer::from_raw(width as u32, height as u32, data)
-                .expect("Invalid dimensions")
-        )
+                .ok_or_else(|e| ImageProcessingError::UnsupportedFormat(e.into()))
+        ))
     }
     
     /// Convert a Vec<u8> to Zune Image format using Zune Image library.
