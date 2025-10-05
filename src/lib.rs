@@ -30,3 +30,19 @@ pub mod bm3d;
 
 /// public api for BM3D denoise operations
 pub use bm3d::denoise;
+
+/// parameters for BM3D denoise operations
+pub struct Bm3dParams {
+    /// estimated noise level
+    pub sigma: f32,       
+    /// threshold weight
+    pub lambda: f32,        
+    /// default 8
+    pub patch_size: usize,   
+    /// default 39
+    pub search_window: usize,    
+    /// true/false
+    pub luminance_only: bool,    
+    /// 0.0–1.0 if float, 0-255 if integer
+    pub mix: f32,            
+}
