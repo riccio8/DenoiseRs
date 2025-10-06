@@ -18,6 +18,7 @@ impl Bm3dParams {
         search_window: usize,
         luminance_only: bool,
         mix: f32,
+        residual: bool,
     ) -> Self {
         Self {
             sigma,
@@ -26,6 +27,7 @@ impl Bm3dParams {
             search_window,
             luminance_only,
             mix,
+            residual,
         }
     }
 }

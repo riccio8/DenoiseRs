@@ -51,6 +51,8 @@ pub struct Bm3dParams {
     pub luminance_only: bool,
     /// 0.0–1.0 if float, 0-255 if integer
     pub mix: f32,
+    /// residual return
+    pub residual: bool,
 }
 
 
