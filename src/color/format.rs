@@ -9,29 +9,6 @@ use zune_image::{
 };
 
 
-impl Bm3dParams {
-    /// constructor for Bm3d struct
-    pub fn new(
-        sigma: f32,
-        lambda: f32,
-        patch_size: usize,
-        search_window: usize,
-        luminance_only: bool,
-        mix: f32,
-        residual: bool,
-    ) -> Self {
-        Self {
-            sigma,
-            lambda,
-            patch_size,
-            search_window,
-            luminance_only,
-            mix,
-            residual,
-        }
-    }
-}
-
 impl Bm3dImage {
     /// constructor for Bm3dImage struct
     pub fn new(
