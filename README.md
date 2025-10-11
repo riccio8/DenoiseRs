@@ -5,7 +5,7 @@ BM3D image processing algorithm implementation written in rust
 
 | Parameter | Description | Effect if Increased | Effect if Decreased |
 |-----------|-------------|------------------|------------------|
-| Sigma | Noise standard deviation (variance). Higher = more noise assumed. | Stronger denoising, may blur details. | Weaker denoising, more noise remains. |
+| Sigma | Noise standard deviation (variance). Higher = more noise assumed. | Stronger denoising, may blur details. | Weaker denoising, more noise remains, but more details are preserved |
 | Lamb2D | Lambda for 2D thresholding in step 1. | Stricter threshold, stronger denoise, may lose detail. | Softer threshold, preserves detail but less denoise. |
 | Lamb3D | Lambda for 3D thresholding in step 2 (Wiener). | Stronger denoise, smoother image. | Weaker denoise, more noise remains. |
 | KaiserWindowBeta | Beta value for Kaiser window in block transform (2–2.5 typical). | Sharper filtering, can reduce ringing. | Smoother filtering, may blur edges slightly. |
