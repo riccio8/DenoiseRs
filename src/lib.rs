@@ -144,8 +144,9 @@ impl Bm3dParams {
     }
 }
 
+/// struct Margin
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
-struct Margin {
+pub struct Margin {
     top_left: (i32, i32),
     bottom_right: (i32, i32),
 }
@@ -168,8 +169,9 @@ impl Margin{
     }
 }
 
+/// struct Point 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
-struct Point {
+pub struct Point {
     x: i32,
     y: i32,
 }
