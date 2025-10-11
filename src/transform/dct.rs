@@ -22,4 +22,48 @@
 // **Returns**: `()` - modifies buffers in-place
 // 
 // ---
-use rustdct::{DctPlanner, Dct2D, IDct2D};
+
+use std::f64::consts::PI;
+
+
+fn dct2d(matrix: &Vec<Vec<i32>>, row: usize, column: usize) {
+    // Creiamo dct[row][column], non column x row
+    let mut dct: Vec<Vec<f64>> = vec![vec![0.0; column]; row];
+
+    let mut ci;
+    let mut cj;
+    let mut dct1;
+    let mut sum;
+
+    for i in 0..row {
+        for j in 0..column {
+            if i == 0 {
+                ci = 1.0 / (row as f64).sqrt();
+            } else {
+                ci = (2.0 / row as f64).sqrt();
+            }
+            if j == 0 {
+                cj = 1.0 / (column as f64).sqrt();
+            } else {
+                cj = (2.0 / column as f64).sqrt();
+            }
+
+            sum = 0.0;
+            for k in 0..row {
+                for l in 0..column {
+                    dct1 = matrix[k][l] as f64
+                        * ((2*k+1) as f64 * i as f64 * PI / (2.0 * row as f64)).cos()
+                        * ((2*l+1) as f64 * j as f64 * PI / (2.0 * column as f64)).cos();
+                    sum += dct1;
+                }
+            }
+            dct[i][j] = ci * cj * sum;
+        }
+    }
+    for r in dct.iter() {
+        for val in r.iter() {
+            print!("{:.6}\t", val);
+        }
+        println!();
+    }
+}

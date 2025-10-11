@@ -6,7 +6,11 @@ use crate::{Margin, Point, Bm3dImage, Bm3dParams};
 use zune_image::{
     image::Image,
 };
-use ndarray::Array2;
+use signal_transforms::dct::Dct2D;
+use nalgebra::base::{
+    OMatrix,
+    dimension::Dyn,
+};
 
 use std::path::Path;
 
@@ -28,7 +32,7 @@ pub fn search_window(img: &Image,
     ref_point: (usize, usize),
     block_size: usize,
     window_size: usize) -> Result<Margin, ImageProcessingError>{
-        
+            
     if block_size >= window_size {
             return Err(ImageProcessingError::InvalidParameter(
                 "Invalid Image size, block size must be smaller than window size"
@@ -48,9 +52,10 @@ pub fn search_window(img: &Image,
         bottom = (img.dimensions().1 - 1) as f64;
         top = bottom - window_size as f64; 
     }
- 
+
     Ok(Margin {
         top_left: (left as i32, top as i32),
         bottom_right: (right as i32, bottom as i32),
     })
 }
+
