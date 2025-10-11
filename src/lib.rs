@@ -143,3 +143,33 @@ impl Bm3dParams {
         self.params.get(key)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+struct Margin {
+    top_left: (i32, i32),
+    bottom_right: (i32, i32),
+}
+
+impl Margin{
+    ///constructor for new margin struct
+    pub fn new(top_left: (i32, i32), bottom_right: (i32, i32)) -> Self {
+        Self { top_left, bottom_right }
+    }
+    
+    ///setter for Margin struct
+    pub fn set(&mut self, top_left: (i32, i32), bottom_right: (i32, i32)) {
+        self.top_left = top_left;
+        self.bottom_right = bottom_right;
+    }
+    
+    ///getter for Margin struct
+    pub fn get(&self) -> ((i32, i32), (i32, i32)) {
+        (self.top_left, self.bottom_right)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+struct Point {
+    x: i32,
+    y: i32,
+}

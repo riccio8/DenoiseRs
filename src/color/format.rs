@@ -74,6 +74,6 @@ impl Bm3dImage {
             ColorSpace::RGB
         )
     }
-
     // will implement conversion functions from rgb to YCbCr color space manually
 }
+
