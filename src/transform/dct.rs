@@ -21,6 +21,8 @@
 // 
 // **Returns**: `()` - modifies buffers in-place
 // 
+// Inspired by:
+// https://github.com/diegolrs/DCT2D-Digital-Image-Processing/blob/main/DCT2D_in_images.ipynb
 // ---
 
 use std::f64::consts::PI;
