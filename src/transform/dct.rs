@@ -26,44 +26,28 @@
 use std::f64::consts::PI;
 
 
-fn dct2d(matrix: &Vec<Vec<i32>>, row: usize, column: usize) {
-    // Creiamo dct[row][column], non column x row
-    let mut dct: Vec<Vec<f64>> = vec![vec![0.0; column]; row];
-
-    let mut ci;
-    let mut cj;
-    let mut dct1;
-    let mut sum;
-
-    for i in 0..row {
-        for j in 0..column {
-            if i == 0 {
-                ci = 1.0 / (row as f64).sqrt();
-            } else {
-                ci = (2.0 / row as f64).sqrt();
-            }
-            if j == 0 {
-                cj = 1.0 / (column as f64).sqrt();
-            } else {
-                cj = (2.0 / column as f64).sqrt();
-            }
-
-            sum = 0.0;
-            for k in 0..row {
-                for l in 0..column {
-                    dct1 = matrix[k][l] as f64
-                        * ((2*k+1) as f64 * i as f64 * PI / (2.0 * row as f64)).cos()
-                        * ((2*l+1) as f64 * j as f64 * PI / (2.0 * column as f64)).cos();
-                    sum += dct1;
-                }
-            }
-            dct[i][j] = ci * cj * sum;
-        }
-    }
-    for r in dct.iter() {
-        for val in r.iter() {
-            print!("{:.6}\t", val);
-        }
-        println!();
-    }
+fn dct1d(matrix: &mut [f64],
+    array_lenght: Option<usize>) -> Vec<f64> {
+    let length: usize = match array_lenght {
+        Some(len) => len,       
+        None => matrix.len(),   
+    };
+    let alpha = (2.0 / length as f64).sqrt();
+    let cos_table: Vec<Vec<f64>> = (0..length)
+        .map(|k| {
+            (0..length)
+                .map(|n| ((PI * (2.0 * n as f64 + 1.0) * k as f64) / (2.0 * length as f64)).cos())
+                .collect()
+        })
+        .collect();
+    let result: Vec<f64> = (0..length)
+        .map(|k| {
+            let ck = if k == 0 { 1.0 / 2.0f64.sqrt() } else { 1.0 };
+            let sum: f64 = (0..length)
+                .map(|n| matrix[n] * cos_table[k][n])
+                .sum();
+            alpha * ck * sum
+        })
+        .collect();
+    result
 }
