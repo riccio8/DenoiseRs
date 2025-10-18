@@ -27,29 +27,45 @@
 
 use std::f64::consts::PI;
 
+use ndarray::Array2;
 
-fn dct1d(matrix: &mut [f64],
-    array_lenght: Option<usize>) -> Vec<f64> {
-    let length: usize = match array_lenght {
-        Some(len) => len,       
-        None => matrix.len(),   
-    };
+/// dct1d implementation, will be called from the dct2d function, applying it to rows and columns
+fn dct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
+    let length = array_length.unwrap_or(matrix.len());
     let alpha = (2.0 / length as f64).sqrt();
-    let cos_table: Vec<Vec<f64>> = (0..length)
-        .map(|k| {
-            (0..length)
-                .map(|n| ((PI * (2.0 * n as f64 + 1.0) * k as f64) / (2.0 * length as f64)).cos())
-                .collect()
-        })
-        .collect();
-    let result: Vec<f64> = (0..length)
+
+    let cos_table = Array2::from_shape_fn((length, length), |(k, n)| {
+        ((PI * (2.0 * n as f64 + 1.0) * k as f64) / (2.0 * length as f64)).cos()
+    });
+
+    (0..length)
         .map(|k| {
             let ck = if k == 0 { 1.0 / 2.0f64.sqrt() } else { 1.0 };
             let sum: f64 = (0..length)
-                .map(|n| matrix[n] * cos_table[k][n])
+                .map(|n| matrix[n] * cos_table[[k, n]])
                 .sum();
             alpha * ck * sum
         })
-        .collect();
-    result
+        .collect()
+}
+
+/// inverse dct1d 
+fn idct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
+    let length = array_length.unwrap_or(matrix.len());
+    let alpha = (2.0 / length as f64).sqrt();
+
+    let cos_table = Array2::from_shape_fn((length, length), |(n, k)| {
+        ((PI * (2.0 * n as f64 + 1.0) * k as f64) / (2.0 * length as f64)).cos()
+    });
+    
+    (0..length)
+        .map(|n| {
+            (0..length)
+                .map(|k| {
+                    let ck = if k == 0 { 1.0 / 2.0f64.sqrt() } else { 1.0 };
+                    ck * matrix[k] * cos_table[[n, k]]
+                })
+                .sum::<f64>() * alpha
+        })
+        .collect()
 }
