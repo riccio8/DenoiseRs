@@ -10,9 +10,9 @@ fn test_denoise_rgb8() {
 
     assert!(Path::new(input_path).exists(), "File di test non trovato: {}", input_path);
 
-    let result = denoise(input_path, output_path, 3, ColorSpace::Rgb8);
-
+    let result = denoise(input_path, 3, ColorSpace::Rgb8);
+    
     assert!(result.is_ok(), "La funzione denoise ha fallito: {:?}", result.err());
-
+    result.unwrap().save(output_path).unwrap();
     assert!(Path::new(output_path).exists(), "File di output non creato");
 }
