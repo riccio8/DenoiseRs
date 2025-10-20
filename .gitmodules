@@ -1,0 +1,3 @@
+[submodule "median/DenoiseRs/median"]
+	path = median/DenoiseRs/median
+	url = https://github.com/riccio8/DenoiseRs
