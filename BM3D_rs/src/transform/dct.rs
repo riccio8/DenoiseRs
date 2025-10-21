@@ -30,7 +30,7 @@ use std::f64::consts::PI;
 use ndarray::Array2;
 
 /// dct1d implementation, will be called from the dct2d function, applying it to rows and columns
-fn dct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
+fn dct1d(matrix: &mut [f64], array_length: Option<usize>) -> Vec<f64> {
     let length = array_length.unwrap_or(matrix.len());
     let alpha = (2.0 / length as f64).sqrt();
 
@@ -50,7 +50,7 @@ fn dct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
 }
 
 /// inverse dct1d 
-fn idct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
+fn idct1d(matrix: &mut [f64], array_length: Option<usize>) -> Vec<f64> {
     let length = array_length.unwrap_or(matrix.len());
     let alpha = (2.0 / length as f64).sqrt();
 
@@ -68,4 +68,34 @@ fn idct1d(matrix: &[f64], array_length: Option<usize>) -> Vec<f64> {
                 .sum::<f64>() * alpha
         })
         .collect()
+}
+
+fn dct2d(matrix: &mut Vec<Vec<f64>>,
+    quant_rows: Option<usize>,
+    quant_columns: Option<usize>) -> &mut Vec<Vec<f64>>{
+    let rows = quant_rows.unwrap_or_else(|| matrix.len());
+    let columns = quant_columns.unwrap_or_else(|| matrix[0].len());
+        
+    let _array2d = vec![
+        vec![1.0, 2.0, 3.0],
+        vec![4.0, 5.0, 6.0],
+        vec![7.0, 8.0, 9.0],
+    ];
+    for row in matrix.iter_mut() {
+        *row = dct1d(&mut*row.as_mut_slice(), None);
+    }
+    for j in 0..columns {
+
+        let mut column: Vec<f64> = (0..rows)
+            .map(|i| matrix[i][j])
+            .collect();
+
+        // Apply dct to first column
+        let transformed = dct1d(&mut column.as_mut_slice(), None);
+
+        for (i, val) in transformed.into_iter().enumerate() {
+            matrix[i][j] = val;
+        }
+    }
+    matrix
 }
