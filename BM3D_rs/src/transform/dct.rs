@@ -99,3 +99,32 @@ fn dct2d(matrix: &mut Vec<Vec<f64>>,
     }
     matrix
 }
+
+fn idct2d(matrix: &mut Vec<Vec<f64>>,
+    quant_rows: Option<usize>,
+    quant_columns: Option<usize>) -> &mut Vec<Vec<f64>>{
+    let rows = quant_rows.unwrap_or_else(|| matrix.len());
+    let columns = quant_columns.unwrap_or_else(|| matrix[0].len());
+        
+    let _array2d = vec![
+        vec![1.0, 2.0, 3.0],
+        vec![4.0, 5.0, 6.0],
+        vec![7.0, 8.0, 9.0],
+    ];
+    for row in matrix.iter_mut() {
+        *row = idct1d(&mut*row.as_mut_slice(), None);
+    }
+    for j in 0..columns {
+        let mut column: Vec<f64> = (0..rows)
+            .map(|i| matrix[i][j])
+            .collect();
+
+        // Apply idct to first column
+        let transformed = idct1d(&mut column.as_mut_slice(), None);
+
+        for (i, val) in transformed.into_iter().enumerate() {
+            matrix[i][j] = val;
+        }
+    }
+    matrix
+}

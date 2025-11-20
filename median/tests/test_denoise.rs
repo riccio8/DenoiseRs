@@ -4,8 +4,8 @@ use std::path::Path;
 
 #[test]
 fn test_denoise_rgb8() {
-    let input_path = "tests/noise.png";
-    let output_path = "tests/output_test.png";
+    let input_path = "tests/test.jpg";
+    let output_path = "tests/output_test2.png";
 
     assert!(Path::new(input_path).exists(), "Test file not found {}", input_path);
 
@@ -16,7 +16,7 @@ fn test_denoise_rgb8() {
     assert!(Path::new(output_path).exists(), "Output file not created");
 }
 
-//#[test]
+// #[test]
 fn test_denoise_rgb16() {
     let input_path = "tests/noise.jpg";
     let output_path = "tests/output1_test.png";
