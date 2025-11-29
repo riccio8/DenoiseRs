@@ -106,6 +106,7 @@ checksum = "6099cdc01846bc367c4e7dd630dc5966dccf36b652fae7a74e17b640411a91b2"
 name = "bm3d_rs"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "dwt",
  "image",
  "nalgebra 0.34.1",
