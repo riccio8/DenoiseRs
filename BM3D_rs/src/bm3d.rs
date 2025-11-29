@@ -1,15 +1,10 @@
 /// wrapper function for BM3D denoising algorithmx
 
 use crate::error::ImageProcessingError;
-use crate::{Margin, Point, Bm3dImage, Bm3dParams};
+use crate::Margin;
 
 use zune_image::{
     image::Image,
-};
-use signal_transforms::dct::Dct2D;
-use nalgebra::base::{
-    OMatrix,
-    dimension::Dyn,
 };
 
 use std::path::Path;
@@ -39,8 +34,8 @@ pub fn search_window(img: &Image,
             ));
         }
 
-    let mut left = f64::max(0.0, (ref_point.0 as f64 + (block_size as f64 - window_size as f64) / 2.0)); // left top x
-    let mut top  = f64::max(0.0, (ref_point.1 as f64 + (block_size as f64 - window_size as f64) / 2.0)); // left top y
+    let mut left = f64::max(0.0, ref_point.0 as f64 + (block_size as f64 - window_size as f64) / 2.0); // left top x
+    let mut top  = f64::max(0.0, ref_point.1 as f64 + (block_size as f64 - window_size as f64) / 2.0); // left top y
     let mut right = left + window_size as f64; // right bottom x
     let mut bottom = top + window_size as f64; // right bottom y
     

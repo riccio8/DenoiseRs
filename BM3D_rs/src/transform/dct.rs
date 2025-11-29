@@ -130,19 +130,19 @@ fn idct2d(matrix: &mut Vec<Vec<f64>>,
 
 
 
-/// Trait marker per tipi numerici ammessi
+/// Trait markers for permitted numeric types
 pub trait DctNum: num_traits::Float {}
 impl DctNum for f32 {}
 impl DctNum for f64 {}
 
-/// Wrapper ergonomico per la DCT 2D
+/// Ergonomic wrapper for DCT 2D
 pub struct Dct2D {
     rows: usize,
     cols: usize,
 }
 
 impl Dct2D {
-    /// test
+    /// new instance creator of dct2d
     pub fn new(rows: usize, cols: usize) -> Self {
         Self { rows, cols }
     }
@@ -152,21 +152,21 @@ impl Dct2D {
         dct2d(buffer, Some(self.rows), Some(self.cols));
     }
 
-    /// DCT con input/output separati
+    /// iDCT with separated in-out
     pub fn process(&self, input: &Vec<Vec<f64>>, output: &mut Vec<Vec<f64>>) {
         *output = input.clone();
         self.dct_2d(output);
     }
 }
 
-/// Wrapper ergonomico per la iDCT 2D
+/// Ergonomic wrapper for iDCT 2D
 pub struct IDct2D {
     rows: usize,
     cols: usize,
 }
 
 impl IDct2D {
-    /// test
+    /// new instance creator of inverste dct2d
     pub fn new(rows: usize, cols: usize) -> Self {
         Self { rows, cols }
     }
@@ -176,7 +176,7 @@ impl IDct2D {
         idct2d(buffer, Some(self.rows), Some(self.cols));
     }
 
-    /// iDCT con input/output separati
+    /// iDCT with separated in-out
     pub fn process(&self, input: &Vec<Vec<f64>>, output: &mut Vec<Vec<f64>>) {
         *output = input.clone();
         self.idct_2d(output);
@@ -186,13 +186,13 @@ impl IDct2D {
 // -------------------------------------------------------------
 // Scaled versions
 // -------------------------------------------------------------
-/// test
+/// orthonormalized versiion
 pub fn scaled_dct2(buffer: &mut Vec<Vec<f64>>) {
     let rows = buffer.len();
     let cols = buffer[0].len();
     dct2d(buffer, Some(rows), Some(cols));
 
-    // Scala i coefficienti per compatibilità JPEG-like
+    // scale size for ortho
     let scale = 1.0 / (rows as f64).sqrt() / (cols as f64).sqrt();
     for r in buffer.iter_mut() {
         for c in r.iter_mut() {
@@ -200,7 +200,7 @@ pub fn scaled_dct2(buffer: &mut Vec<Vec<f64>>) {
         }
     }
 }
-/// test
+/// orthonormalized
 pub fn scaled_idct2(buffer: &mut Vec<Vec<f64>>) {
     let rows = buffer.len();
     let cols = buffer[0].len();
@@ -222,7 +222,7 @@ pub fn scaled_idct2(buffer: &mut Vec<Vec<f64>>) {
 mod tests {
     use super::*;
 
-    // Soglia per confronti floating point
+    // Threshold for floating point comparisons
     const EPS: f64 = 1e-6;
 
     fn approx_eq(a: f64, b: f64) -> bool {
