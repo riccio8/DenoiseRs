@@ -67,8 +67,8 @@ fn idct1d(matrix: &mut [f64], array_length: Option<usize>) -> Vec<f64> {
         })
         .collect()
 }
-
-fn dct2d(matrix: &mut Vec<Vec<f64>>,
+/// implementation of dct2d
+pub fn dct2d(matrix: &mut Vec<Vec<f64>>,
     quant_rows: Option<usize>,
     quant_columns: Option<usize>) -> &mut Vec<Vec<f64>>{
     let rows = quant_rows.unwrap_or_else(|| matrix.len());
@@ -97,8 +97,8 @@ fn dct2d(matrix: &mut Vec<Vec<f64>>,
     }
     matrix
 }
-
-fn idct2d(matrix: &mut Vec<Vec<f64>>,
+/// implementation fo inverse dct2d
+pub fn idct2d(matrix: &mut Vec<Vec<f64>>,
     quant_rows: Option<usize>,
     quant_columns: Option<usize>) -> &mut Vec<Vec<f64>>{
     let rows = quant_rows.unwrap_or_else(|| matrix.len());

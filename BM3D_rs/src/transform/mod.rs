@@ -9,3 +9,6 @@
 
 /// Wrapper for 2D DCT functions
 pub mod dct;
+
+/// Wrapper for wiener functions
+pub mod wiener;

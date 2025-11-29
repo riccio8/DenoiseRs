@@ -3,38 +3,92 @@
 //!
 //!
 
-//
-// ### **Biorthogonal Wavelets**
-// - **`Transform::from_wavelet(Wavelet::bior)`** - Creates a transform from a biorthogonal wavelet
-// - **`Wavelet::new_biorthogonal(1, 3)`** - bior1.3, bior2.2, bior3.1, etc.
-//
-// ### **Forward 2D Transform**
-// - **`transform_2d(&mut data, width, height, &transform, decomp_lvls)`**
-// - **`forward(&mut data, width, height, levels)`** - Simplified version
-//
-// ### **Inverse 2D Transform**
-// - **`inverse_2d(&mut data, width, height, &transform, decomp_lvls)`**
-// - **`inverse(&mut data, width, height, levels)`** - Simplified version
-//
-// ### **Wavelet Utilities**
-// - **`get_biorthogonal_wavelet()`** - Predefined biorthogonal wavelets
-// - **`decomposition_steps(width, height, levels)`** - Computes decomposition dimensions
-//
-// **Returns**: `Result<(), TransformError>` - modifies buffer in-place
-//
-// ---
-//
-//
-// ### **Constructing Biorthogonal Wavelets**
-// - **`Wavelet::biorthogonal(vanishing_moments_decomposition, vanishing_moments_reconstruction)`**
-// - Example: `bior2.2` → `Wavelet::biorthogonal(2, 2)`
-//
-// - **`Wavelet::bior1_3()`** - bior1.3
-// - **`Wavelet::bior2_2()`** - bior2.2
-// - **`Wavelet::bior3_1()`** - bior3.1
-// - **`Wavelet::bior3_3()`** - bior3.3
-// - **`Wavelet::bior3_5()`** - bior3.5
-// - **`Wavelet::bior4_4()`** - bior4.4
-//
-// **Parameters**: `decomp_lvls` = number of decomposition levels (3-5)
-//
+use crate::transform::dct::{Dct2D, IDct2D};
+
+// Apply the Wiener filter to a single block in the DCT domain
+/// - `noisy`: noisy block to be filtered (in/out)
+/// - `reference`: reference block (base estimate)
+/// - `sigma`: estimated noise
+pub fn wiener_filter_block(noisy: &mut Vec<Vec<f64>>, reference: &[Vec<f64>], sigma: f64) {
+    let rows = noisy.len();
+    let cols = noisy[0].len();
+
+    // copy because it works in-place
+    let mut reference_dct = reference.to_owned();
+
+    let dct = Dct2D::new(rows, cols);
+    let idct = IDct2D::new(rows, cols);
+    dct.dct_2d(noisy);
+    dct.dct_2d(&mut reference_dct);
+
+    // Wiener gain
+    for i in 0..rows {
+        for j in 0..cols {
+            let var_est = reference_dct[i][j].powi(2);
+            let gain = var_est / (var_est + sigma.powi(2));
+            noisy[i][j] *= gain;
+        }
+    }
+    idct.idct_2d(noisy);
+}
+
+/// Apply the Wiener filter to a set of blocks
+/// - `noisy_blocks`: noisy blocks (modified in-place)
+/// - `reference_blocks`: base estimate of the blocks
+/// - `sigma`: estimated noise
+pub fn wiener_filter_blocks(noisy_blocks: &mut [Vec<Vec<f64>>], reference_blocks: &[Vec<Vec<f64>>], sigma: f64) {
+    assert_eq!(noisy_blocks.len(), reference_blocks.len());
+
+    for (noisy, reference) in noisy_blocks.iter_mut().zip(reference_blocks.iter()) {
+        wiener_filter_block(noisy, reference, sigma);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const EPS: f64 = 1e-6;
+    fn approx_eq(a: f64, b: f64) -> bool {
+        (a - b).abs() < EPS
+    }
+    #[test]
+    fn test_wiener_block_roundtrip() {
+        let mut noisy = vec![
+            vec![10.0, 20.0, 30.0],
+            vec![40.0, 50.0, 60.0],
+            vec![70.0, 80.0, 90.0],
+        ];
+        let reference = noisy.clone();
+        let sigma = 1.0;
+
+        wiener_filter_block(&mut noisy, &reference, sigma);
+
+        // The result should be close to the reference because sigma is small.
+        for i in 0..3 {
+            for j in 0..3 {
+                assert!(approx_eq(noisy[i][j], reference[i][j]), 
+                    "Mismatch at ({}, {}): got {}, expected {}", 
+                    i, j, noisy[i][j], reference[i][j]);
+            }
+        }
+    }
+    #[test]
+    fn test_wiener_gain_limits() {
+        let mut noisy = vec![
+            vec![10.0, -20.0, 30.0],
+            vec![-40.0, 50.0, -60.0],
+            vec![70.0, -80.0, 90.0],
+        ];
+        let reference = noisy.clone();
+        let sigma = 1.0;
+    
+        wiener_filter_block(&mut noisy, &reference, sigma);
+    
+        for i in 0..3 {
+            for j in 0..3 {
+                assert!(noisy[i][j].abs() <= reference[i][j].abs());
+            }
+        }
+    }
+
+}
