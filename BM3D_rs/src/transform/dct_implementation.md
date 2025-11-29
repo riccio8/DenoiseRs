@@ -73,3 +73,67 @@ A common pattern for block-based processing (e.g., denoising, compression) looks
 5. Reinsert or combine the reconstructed block in your image or algorithm.
 
 This mirrors standard signal-processing workflows and integrates cleanly with BM3D stage-1 and stage-2 transforms.
+
+
+## Bm3d Workflow
+
+The BM3D pipeline requires exactly this:
+
+- operate on 2D blocks (typically 8×8);
+
+- apply DCT and iDCT many times;
+
+- manipulate coefficients in the frequency domain (thresholding, shrinkage, weighting);
+
+- work efficiently, without cloning arrays unnecessarily.
+
+For this, the APIs to use are structured wrappers, i.e.:
+
+```rust
+let dct = Dct2D::new(rows, cols);
+let idct = IDct2D::new(rows, cols);
+
+dct.dct_2d(&mut block);     // forward
+// ... filtering / hard-thresholding ...
+idct.idct_2d(&mut block);   // inverse
+```
+
+This is exactly what BM3D requires in the two phases:
+
+- Phase 1 (Hard Thresholding)
+
+  - Extract similar blocks.
+
+  - Apply 2D DCT to each block.
+  
+  - Perform hard-thresholding on the coefficients.
+  
+  - Apply 2D iDCT to reconstruct the filtered block.
+  
+  - Accumulate the reconstructed blocks in the aggregated patch.
+
+- Phase 2 (Wiener filtering)
+
+  - Extract the same blocks (guided by the basic estimate).
+  
+  - Apply 2D DCT to both the noisy block and the reference.
+  
+  - Calculate the Wiener filter in the DCT domain.
+  
+  - Apply 2D iDCT to the filtered block.
+  
+  - Recombine everything in the final reconstruction.
+
+### Why not use the “scaled” functions?
+
+BM3D assumes an orthonormal transform for simplicity, but the weight and thresholding formulas are calibrated to the standard behavior of the unscaled DCT-II. The scaled versions add a factor of √N*√M, which would be unnecessary noise.
+
+Why not use “free” functions such as dct2d()?
+
+They can work, but:
+
+you must always remember to pass the dimensions,
+
+they do not offer the convenience and consistency of wrappers,
+
+in practice, BM3D applies hundreds of thousands of transforms: having a pre-set planner (Dct2D::new) is cleaner, more readable, and makes the block size explicit.
