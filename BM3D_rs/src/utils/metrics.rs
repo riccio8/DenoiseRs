@@ -18,6 +18,6 @@ pub fn dynamic_to_ycbcr(dynamic_img: &DynamicImage) -> Result<Image, ImageProces
 
 pub fn ycbcr_to_dynamic(ycbcr_img: Image) -> Result<DynamicImage, ImageProcessingError> {
     let img:DynamicImage = Bm3dImage::convert_ycbcr_to_dynamic(ycbcr_img).map_err(|_| ImageProcessingError::Other("Error while saving image"))?;
-    Ok(img)
+    Ok(img.to_rgb8().into()) 
 
 }

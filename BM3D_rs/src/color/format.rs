@@ -76,4 +76,3 @@ impl Bm3dImage {
     }
     // will implement conversion functions from rgb to YCbCr color space manually
 }
-

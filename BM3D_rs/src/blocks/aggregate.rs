@@ -2,7 +2,7 @@
 //! params:
 //! -mix: mixing factor between original image and reconstructed image, blending
 
-use crate::error::{AggError, ImageProcessingError};
+use crate::error::AggError;
 
 
 /// Reconstructs two images (f64 pixel vectors) using a blending factor.
