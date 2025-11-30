@@ -75,3 +75,11 @@ impl From<ImageProcessingError> for u32 {
         }
     }
 }
+
+/// error in aggregations
+#[derive(Debug)]
+pub enum AggError {
+    InvalidMixFactor(f64),
+    DimensionMismatch { a: usize, b: usize },
+    ImageProcessingError,
+}

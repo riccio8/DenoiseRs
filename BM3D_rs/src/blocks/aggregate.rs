@@ -2,14 +2,8 @@
 //! params:
 //! -mix: mixing factor between original image and reconstructed image, blending
 
-use crate::error::{Bm3dError, ImageProcessingError};
+use crate::error::{AggError, ImageProcessingError};
 
-#[derive(Debug)]
-pub enum Bm3dError {
-    InvalidMixFactor(f64),
-    DimensionMismatch { a: usize, b: usize },
-    ImageProcessingError,
-}
 
 /// Reconstructs two images (f64 pixel vectors) using a blending factor.
 /// 
@@ -25,12 +19,12 @@ pub fn aggregate(
     original: &[f64],
     reconstructed: &[f64],
     mix: f64,
-) -> Result<Vec<f64>, Bm3dError> {
+) -> Result<Vec<f64>, AggError> {
     if mix < 0.0 || mix > 1.0 {
-        return Err(Bm3dError::InvalidMixFactor(mix));
+        return Err(AggError::InvalidMixFactor(mix));
     }
     if original.len() != reconstructed.len() {
-        return Err(Bm3dError::DimensionMismatch{ 
+        return Err(AggError::DimensionMismatch{ 
             a: original.len(), 
             b: reconstructed.len() 
         });
