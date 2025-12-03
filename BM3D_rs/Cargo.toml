@@ -7,8 +7,8 @@ repository = "https://github.com/riccio8/BM3D_rs"
 
 
 [dependencies]
-image = "0.25"
-ndarray = "0.16.1"
+image = "0.25.9"
+ndarray = "0.17.1"
 rayon = "1.11.0"
 rustdct = "0.7"
 palette = "0.7"
@@ -20,3 +20,7 @@ noise = "0.9.0"
 nalgebra = "0.34.1"
 signal-transforms = "0.1.5"
 approx = "0.5.1"
+tempfile = "3.23.0"
+clap = { version = "4.5.53", features = ["derive"] }
+ocl-core = "0.11.5"
+

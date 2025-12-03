@@ -76,10 +76,22 @@ impl From<ImageProcessingError> for u32 {
     }
 }
 
-/// error in aggregations
+/// Error in aggregations
 #[derive(Debug)]
 pub enum AggError {
     InvalidMixFactor(f64),
     DimensionMismatch { a: usize, b: usize },
     ImageProcessingError,
 }
+
+impl fmt::Display for AggError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AggError::InvalidMixFactor(mix) => write!(f, "Invalid mix factor: {} (must be 0.0-1.0)", mix),
+            AggError::DimensionMismatch { a, b } => write!(f, "Dimension mismatch: original={}, reconstructed={}", a, b),
+            AggError::ImageProcessingError => write!(f, "Image processing error in aggregation"),
+        }
+    }
+}
+
+impl std::error::Error for AggError {}

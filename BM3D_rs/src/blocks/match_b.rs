@@ -8,8 +8,8 @@ use crate::Margin;
 
 use zune_image::{
     image::Image,
+    codecs::bmp::zune_core::colorspace::ColorSpace,
 };
-
 
 /// Find the search window whose center is the reference block in *Img*.
 /// Note that the center of the search window is not always the reference block due to image borders.
@@ -26,34 +26,43 @@ pub fn search_window(
         ));
     }
 
-    // Calculate left/top coordinates (may shift at borders)
-    let mut left = f64::max(0.0, ref_point.0 as f64 + (block_size as f64 - window_size as f64) / 2.0);
-    let mut top  = f64::max(0.0, ref_point.1 as f64 + (block_size as f64 - window_size as f64) / 2.0);
-    let mut right = left + window_size as f64;
-    let mut bottom = top + window_size as f64;
+    let (img_width, img_height) = img.dimensions();
     
-    // Clamp window if at image border
-    if right >= img.dimensions().0 as f64 {
-        right = (img.dimensions().0 - 1) as f64;
-        left = right - window_size as f64;
+    // Calculate left/top coordinates (may shift at borders)
+    let half_diff = (window_size as i32 - block_size as i32) / 2;
+    let mut left = ref_point.0 as i32 - half_diff;
+    let mut top = ref_point.1 as i32 - half_diff;
+    
+    // Clamp to image bounds
+    if left < 0 { left = 0; }
+    if top < 0 { top = 0; }
+    
+    let mut right = left + window_size as i32;
+    let mut bottom = top + window_size as i32;
+    
+    if right > img_width as i32 {
+        right = img_width as i32;
+        left = right - window_size as i32;
+        if left < 0 { left = 0; }
     }
-    if bottom >= img.dimensions().1 as f64 {
-        bottom = (img.dimensions().1 - 1) as f64;
-        top = bottom - window_size as f64; 
+    
+    if bottom > img_height as i32 {
+        bottom = img_height as i32;
+        top = bottom - window_size as i32;
+        if top < 0 { top = 0; }
     }
 
-    Ok(Margin {
-        top_left: (left as i32, top as i32),
-        bottom_right: (right as i32, bottom as i32),
-    })
+    Ok(Margin::new((left, top), (right, bottom)))
 }
 
+#[derive(Debug, Clone)]
 pub struct Patch {
     pub top_left: (usize, usize),
     pub data: Vec<f32>, // Patch data, e.g. flattened block
 }
 
-pub struct MatchedPatch {
+#[derive(Debug)]
+struct MatchedPatch {
     pub patch: Patch,
     pub distance: f32,
 }
@@ -62,39 +71,55 @@ pub struct MatchedPatch {
 /// The patch contains all YCbCr channels flattened into a single array.
 /// [Y data][Cb data][Cr data]
 pub fn extract_patch(img: &Image, top_left: (usize, usize), block_size: usize, ignore_alpha: bool) -> Option<Patch> {
-
-    let (width, height ) = img.dimensions();
+    let (width, height) = img.dimensions();
 
     // Don't go out of image bounds
     if top_left.0 + block_size > width || top_left.1 + block_size > height {
         return None;
     }
 
-    // Get number of channels from channels_ref()
-    let channels: usize = img.channels_ref(ignore_alpha).len();
+    // Get the flattened image data
+    let data = img.flatten_to_u8();
+    if data.is_empty() {
+        return None;
+    }
 
-    let mut data = Vec::with_capacity(block_size * block_size * channels);
+    // Get number of channels from colorspace
+    let colorspace = img.colorspace();
+    let channels_count = match colorspace {
+        ColorSpace::RGB => 3,
+        ColorSpace::RGBA => if ignore_alpha { 3 } else { 4 },
+        ColorSpace::YCbCr => 3,
+        ColorSpace::YCCK => 4,
+        ColorSpace::CMYK => 4,
+        ColorSpace::Luma => 1,
+        ColorSpace::LumaA => if ignore_alpha { 1 } else { 2 },
+        _ => 3, // default fallback
+    };
 
-    // Get references to channels, set ignore_alpha as needed
-    let channels = img.channels_ref(ignore_alpha);
+    let mut patch_data = Vec::with_capacity(block_size * block_size * channels_count);
 
-
-for ch in channels {
-        let ch_data = unsafe {ch.alias()}; // &[u8] (or &[T])
+    // Extract patch data for each channel
+    for channel_idx in 0..channels_count.min(data.len()) {
+        let channel_data = &data[channel_idx];
         for y in 0..block_size {
             for x in 0..block_size {
-                let xx = top_left.0 + x;
-                let yy = top_left.1 + y;
-                let idx = yy * width + xx;
-                if idx >= ch.len() {
-                    return None; // out of bounds protection
+                let pixel_x = top_left.0 + x;
+                let pixel_y = top_left.1 + y;
+                let idx = pixel_y * width + pixel_x;
+                
+                if idx < channel_data.len() {
+                    patch_data.push(channel_data[idx] as f32);
+                } else {
+                    return None; // out of bounds
                 }
-                data.push(ch_data[idx] as f32);
             }
         }
     }
-    Some(Patch { top_left, data })
+    
+    Some(Patch { top_left, data: patch_data })
 }
+
 /// Compute the L2 (Euclidean) distance between two patches
 pub fn l2_patch_distance(a: &Patch, b: &Patch) -> f32 {
     a.data.iter()
@@ -113,24 +138,30 @@ pub fn find_similar_patches(
     max_patches_per_group: usize,
     ignore_alpha: bool,
 ) -> Result<Vec<Patch>, ImageProcessingError> {
-
     // 1. Get the search window for the reference patch
     let margin = search_window(img, ref_point, block_size, window_size)?;
 
     // 2. Extract the reference patch
-    let reference_patch = extract_patch(img, ref_point, block_size, ignore_alpha )
+    let reference_patch = extract_patch(img, ref_point, block_size, ignore_alpha)
         .ok_or(ImageProcessingError::Other("Reference patch invalid"))?;
     
     // 3. For every possible patch in the search window, compute similarity to the reference patch
     let mut candidates: Vec<MatchedPatch> = Vec::new();
-    for y in margin.top_left.1 as usize ..= (margin.bottom_right.1 as usize).saturating_sub(block_size) {
-        for x in margin.top_left.0 as usize ..= (margin.bottom_right.0 as usize).saturating_sub(block_size) {
+    
+    let start_y = margin.top_left.1.max(0) as usize;
+    let start_x = margin.top_left.0.max(0) as usize;
+    let end_y = (margin.bottom_right.1 as usize).saturating_sub(block_size);
+    let end_x = (margin.bottom_right.0 as usize).saturating_sub(block_size);
+    
+    for y in start_y..=end_y {
+        for x in start_x..=end_x {
             if let Some(patch) = extract_patch(img, (x, y), block_size, ignore_alpha) {
                 let dist = l2_patch_distance(&reference_patch, &patch);
                 candidates.push(MatchedPatch { patch, distance: dist });
             }
         }
     }
+    
     // 4. Sort patches by increasing distance (most similar first)
     candidates.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap_or(Ordering::Equal));
 

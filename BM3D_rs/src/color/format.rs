@@ -1,13 +1,11 @@
-//! conversion functions from rgb to YCbCr color space, if luminance_only is true working only on Y channel,
-//! otherwise working on all channels.
+//! conversion functions from rgb to YCbCr color space
 use crate::{Bm3dParams, Bm3dImage};
 use crate::error::ImageProcessingError;
 use image::{DynamicImage, ImageBuffer};
 use zune_image::{
     image::Image, 
-    codecs::bmp::zune_core::colorspace::ColorSpace, 
+    codecs::bmp::zune_core::colorspace::ColorSpace,
 };
-
 
 impl Bm3dImage {
     /// constructor for Bm3dImage struct
@@ -21,58 +19,55 @@ impl Bm3dImage {
         }
     }
     
-    /// Convert a DynamicImage to YCbCr color space using Zune Image library.
-    pub fn convert_dynamic_to_ycbcr(dynamic_img: &DynamicImage) -> Result<Image, ImageProcessingError> {
+    /// Convert a DynamicImage to RGB format using Zune Image library.
+    pub fn convert_dynamic_to_rgb(dynamic_img: &DynamicImage) -> Result<Image, ImageProcessingError> {
         let rgb_img = dynamic_img.to_rgb8();
         let (width, height) = rgb_img.dimensions();
         
-        let mut zune_img = Image::from_u8(
-            &rgb_img,
+        Ok(Image::from_u8(
+            rgb_img.as_raw(),
             width as usize, 
             height as usize,
             ColorSpace::RGB
-        );
-
-        zune_img.convert_color(ColorSpace::YCbCr).map_err(|_| ImageProcessingError::ColorConversionError)?;
-        Ok(zune_img)
-    }
-    
-    /// convert YCbCr to DynamicImage
-    pub fn convert_ycbcr_to_dynamic(zune_img: Image) -> Result<DynamicImage, ImageProcessingError> {
-        let mut img_clone = zune_img.clone();
-        
-        img_clone.convert_color(ColorSpace::RGB).map_err(|_| ImageProcessingError::ColorConversionError)?;
-        
-        let (width, height) = img_clone.dimensions();
-        let data = img_clone.flatten_to_u8().remove(0); 
-        
-        Ok(DynamicImage::ImageRgb8(
-            ImageBuffer::from_raw(width as u32, height as u32, data)
-                .ok_or_else(|| ImageProcessingError::UnsupportedFormat("Invalid raw buffer".into()))?
         ))
     }
     
-    /// Convert a Vec<u8> to Zune Image format using Zune Image library.
-    pub fn vec_to_zune(
-        data: Vec<u8>,
-        width: usize, 
-        height: usize,
-        colorspace: ColorSpace
-    ) -> Image {
-        Image::from_u8(&data, width, height, colorspace)
-    }
-    
-    /// Convert a DynamicImage to Zune Image format using Zune Image library.
-    pub fn dynamic_to_zune(dynamic_img: &image::DynamicImage) -> Image {
-        let rgb_img = dynamic_img.to_rgb8();
-        let (width, height) = rgb_img.dimensions();
+    /// Convert Image to DynamicImage
+    pub fn convert_to_dynamic(zune_img: &Image) -> Result<DynamicImage, ImageProcessingError> {
+        let (width, height) = zune_img.dimensions();
+        let data = zune_img.flatten_to_u8();
         
-        Self::vec_to_zune(
-            rgb_img.into_vec(),  // &[u8] default from rgb image
-            width as usize,
-            height as usize,
-            ColorSpace::RGB
-        )
+        if data.is_empty() {
+            return Err(ImageProcessingError::ColorConversionError);
+        }
+        
+        // Prendi il primo canale
+        let channel_data = &data[0];
+        
+        // Se abbiamo 3 canali (RGB), usa tutti, altrimenti usa solo il primo
+        let rgb_data = if data.len() >= 3 {
+            // Combina i canali RGB
+            let mut combined = Vec::with_capacity(width * height * 3);
+            for i in 0..width * height {
+                if i < data[0].len() { combined.push(data[0][i]); } else { combined.push(0); }
+                if i < data[1].len() { combined.push(data[1][i]); } else { combined.push(0); }
+                if i < data[2].len() { combined.push(data[2][i]); } else { combined.push(0); }
+            }
+            combined
+        } else {
+            // Solo un canale (luminanza), duplica per RGB
+            let mut rgb = Vec::with_capacity(width * height * 3);
+            for &gray in channel_data {
+                rgb.push(gray); // R
+                rgb.push(gray); // G  
+                rgb.push(gray); // B
+            }
+            rgb
+        };
+        
+        Ok(DynamicImage::ImageRgb8(
+            ImageBuffer::from_raw(width as u32, height as u32, rgb_data)
+                .ok_or(ImageProcessingError::ColorConversionError)?
+        ))
     }
-    // will implement conversion functions from rgb to YCbCr color space manually
 }
