@@ -24,3 +24,31 @@ tempfile = "3.23.0"
 clap = { version = "4.5.53", features = ["derive"] }
 ocl-core = "0.11.5"
 
+# Configurazione ottimizzata per release
+[profile.release]
+# Ottimizzazione massima per CPU moderna
+opt-level = 3
+# Usa tutte le ottimizzazioni link-time
+lto = "fat"           # o "thin" per tempi di compilazione più brevi
+# Usa CPU specifica (modifica per la tua CPU)
+codegen-units = 1     # Migliore ottimizzazione, compilazione più lenta
+# Rimuovi debug info
+strip = "debuginfo"   # o "symbols" per ridurre dimensione
+# Rimuovi asserts
+debug = false
+# Abilita CPU-specific optimizations
+target-cpu = "native" # Usa istruzioni della tua CPU
+
+# Configurazione per debug (veloce compilazione)
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+
+# Configurazione per test/benchmark
+[profile.bench]
+opt-level = 3
+lto = "thin"
+codegen-units = 16    # Compilazione più veloce per benchmark
+debug = false
