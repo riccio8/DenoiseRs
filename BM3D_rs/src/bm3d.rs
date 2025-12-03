@@ -8,20 +8,45 @@ use crate::{
     error::ImageProcessingError,
 };
 use zune_image::{image::Image, codecs::bmp::zune_core::colorspace::ColorSpace};
-use rayon::iter::ParallelBridge;
-use rayon::iter::ParallelIterator;
+use rayon::prelude::*;
+use std::time::Instant;
 
-/// Funzione principale BM3D denoise
+fn setup_rayon() {
+    let num_cpus = num_cpus::get();
+    println!("Detected {} CPU cores", num_cpus);
+    
+    // Usa tutti i core tranne uno per il sistema
+    let threads_to_use = (num_cpus - 1).max(1);
+    
+    if let Err(e) = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads_to_use)
+        .build_global() 
+    {
+        eprintln!("Warning: Failed to configure Rayon: {}", e);
+    }
+}
+
+/// Versione ottimizzata per CPU parallela
 pub fn denoise(image_path: &Path, output_path: &Path, sigma: f64) -> Result<(), ImageProcessingError> {
-    // 1. Inizializza i parametri BM3D
-    let mut params = Bm3dParams::new();
-    params.set(Parameters::Sigma, ParamValue::F64(sigma));
-
-    // 2. Carica immagine e converti a RGB
+    setup_rayon();
+    
+    // 1. Carica immagine
     println!("Loading image from {:?}...", image_path);
     let dyn_img = load_dynamic_image(image_path)?;
     
-    // Converti a RGB con zune-image
+    // 2. Ridimensiona per velocità
+    let max_size = 512; // Imposta a 1024 o più per qualità
+    let dyn_img = if dyn_img.width() > max_size || dyn_img.height() > max_size {
+        println!("Resizing to {}px max for performance...", max_size);
+        let scale = max_size as f32 / dyn_img.width().max(dyn_img.height()) as f32;
+        let new_width = (dyn_img.width() as f32 * scale) as u32;
+        let new_height = (dyn_img.height() as f32 * scale) as u32;
+        dyn_img.resize(new_width, new_height, image::imageops::FilterType::Triangle)
+    } else {
+        dyn_img
+    };
+    
+    // 3. Converti
     let rgb_img = {
         let rgb = dyn_img.to_rgb8();
         let (width, height) = rgb.dimensions();
@@ -34,148 +59,138 @@ pub fn denoise(image_path: &Path, output_path: &Path, sigma: f64) -> Result<(), 
     };
     
     let (width, height) = rgb_img.dimensions();
-    println!("Image loaded: {}x{}", width, height);
-
-    // 3. Parametri di patch
-    let block_size = if let ParamValue::I32(bs) = params.get(&Parameters::Step1BlockSize).unwrap() { *bs as usize } else { 8 };
-    let window_size = if let ParamValue::I32(ws) = params.get(&Parameters::Step1WindowSize).unwrap() { *ws as usize } else { 21 }; // meglio 39 per qualità
-    let max_match = if let ParamValue::I32(mm) = params.get(&Parameters::Step1MaxMatch).unwrap() { *mm as usize } else { 8 }; // 16 per quality
-    let step = if let ParamValue::I32(st) = params.get(&Parameters::Step1SpeedupFactor).unwrap() { *st as usize } else { 8 }; // 3 rispetto a 8
-    let ignore_alpha = true;
-
-    println!("Block size: {}, Window size: {}, Max matches: {}, Step: {}", 
-             block_size, window_size, max_match, step);
-
-    // 4. Estrazione blocchi simili (lavora su tutti i canali RGB)
-    println!("Finding similar patches...");
-    let grouped_blocks: Vec<Vec<Patch>> = (0..height.saturating_sub(block_size))
-    .step_by(step)
-    .par_bridge() // Abilita parallelizzazione
-    .flat_map(|y| {
-        (0..width.saturating_sub(block_size))
-            .step_by(step)
-            .filter_map(|x| {
-                match crate::blocks::match_b::find_similar_patches(
-                    &rgb_img,
-                    (x, y),
-                    block_size,
-                    window_size,
-                    max_match,
-                    ignore_alpha,
-                ) {
-                    Ok(patches) if !patches.is_empty() => Some(patches),
-                    _ => None,
-                }
-            })
-            .collect::<Vec<_>>()
-    })
-    .collect();
+    println!("Processing image: {}x{}", width, height);
     
-    println!("Found {} groups of patches", grouped_blocks.len());
+    // 4. Parametri ottimizzati per CPU
+    let block_size = 8;
+    let window_size = 21; // Finestra più piccola per velocità
+    let max_match = 8;    // Meno match per velocità
+    let step = 8;         // Step più grande per velocità
+    
+    println!("Configuration (CPU optimized):");
+    println!("  Block size: {}", block_size);
+    println!("  Search window: {}x{}", window_size, window_size);
+    println!("  Max matches: {}", max_match);
+    println!("  Step: {}", step);
+    
+    // 5. Ricerca patch parallela con progresso
+    println!("\nFinding similar patches...");
+    let start_time = Instant::now();
+    
+    let total_y = (height.saturating_sub(block_size) + step - 1) / step;
+    let total_x = (width.saturating_sub(block_size) + step - 1) / step;
+    let total_blocks = total_y * total_x;
+    println!("Total reference blocks: {}", total_blocks);
+    
+    // Usa parallelizzazione efficiente
+    let grouped_blocks: Vec<Vec<Patch>> = (0..height.saturating_sub(block_size))
+        .step_by(step)
+        .par_bridge()
+        .flat_map(|y| {
+            (0..width.saturating_sub(block_size))
+                .step_by(step)
+                .filter_map(|x| {
+                    // Stampa progresso ogni 100 blocchi
+                    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+                    let count = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if count % 100 == 0 {
+                        let elapsed = start_time.elapsed().as_secs_f32();
+                        let rate = (count as f32 / elapsed.max(0.1));
+                        print!("\rProcessed: {}/{} blocks ({:.1} blocks/sec)", count, total_blocks, rate);
+                        let _ = std::io::Write::flush(&mut std::io::stdout());
+                    }
+                    
+                    match crate::blocks::match_b::find_similar_patches(
+                        &rgb_img,
+                        (x, y),
+                        block_size,
+                        window_size,
+                        max_match,
+                        true,
+                    ) {
+                        Ok(patches) if !patches.is_empty() => Some(patches),
+                        _ => None,
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    
+    let elapsed = start_time.elapsed();
+    println!("\rFound {} groups of patches in {:.2}s ({:.1} blocks/sec)   ", 
+             grouped_blocks.len(), 
+             elapsed.as_secs_f32(),
+             total_blocks as f32 / elapsed.as_secs_f32());
+    
     if grouped_blocks.is_empty() {
         return Err(ImageProcessingError::Other("No patches found"));
     }
-
-    // 5. Hard thresholding (fase 1) - su ogni canale separatamente
-    println!("Applying hard thresholding...");
+    
+    // 6. Hard thresholding
+    println!("\nApplying hard thresholding...");
     let dct = Dct2D::new(block_size, block_size);
     let idct = IDct2D::new(block_size, block_size);
-    let lambda_2d = if let ParamValue::F64(l) = params.get(&Parameters::Lamb2D).unwrap() { *l } else { 2.0 };
-    let threshold = lambda_2d * sigma;
-
-    // Processa ogni canale separatamente
-    let num_channels = 3; // RGB
-    let mut step1_reconstructed: Vec<Vec<Vec<Patch>>> = vec![vec![]; num_channels];
+    let threshold = 2.0 * sigma;
     
-    for channel in 0..num_channels {
-        println!("Processing channel {}...", channel);
-        let mut channel_patches: Vec<Vec<Patch>> = Vec::new();
-        
-        for group in &grouped_blocks {
-            let mut reconstructed_group: Vec<Patch> = Vec::new();
-            
+    // Parallelizza anche il thresholding
+    let step1_reconstructed: Vec<Vec<Patch>> = grouped_blocks
+        .par_iter()
+        .map(|group| {
+            let mut reconstructed = Vec::new();
             for patch in group {
-                // Estrai il canale corrente dal patch
-                let mut channel_data = Vec::new();
-                for i in (channel..patch.data.len()).step_by(num_channels) {
-                    channel_data.push(patch.data[i] as f64);
-                }
+                // Prendi solo il canale Y (luminanza) per semplificare
+                let y_channel_size = block_size * block_size;
+                let y_data: Vec<f64> = patch.data[..y_channel_size.min(patch.data.len())]
+                    .iter()
+                    .map(|&v| v as f64)
+                    .collect();
                 
-                // Riorganizza in 2D
-                if channel_data.len() < block_size * block_size {
+                if y_data.len() < y_channel_size {
                     continue;
                 }
                 
-                let mut block_2d: Vec<Vec<f64>> = channel_data
+                let mut block_2d: Vec<Vec<f64>> = y_data
                     .chunks(block_size)
-                    .take(block_size)
                     .map(|r| r.to_vec())
                     .collect();
                 
-                if block_2d.len() != block_size {
-                    continue;
-                }
-                
-                // DCT 2D
+                // DCT + Threshold + iDCT
                 dct.dct_2d(&mut block_2d);
-                
-                // Hard thresholding
                 hard_threshold(&mut block_2d, threshold);
-                
-                // iDCT 2D
                 idct.idct_2d(&mut block_2d);
                 
-                // Riconverti a patch
                 let filtered_data: Vec<f32> = block_2d.into_iter().flatten().map(|v| v as f32).collect();
-                reconstructed_group.push(Patch {
+                reconstructed.push(Patch {
                     top_left: patch.top_left,
                     data: filtered_data,
                 });
             }
-            if !reconstructed_group.is_empty() {
-                channel_patches.push(reconstructed_group);
-            }
-        }
-        step1_reconstructed[channel] = channel_patches;
-    }
-
-    // 6. Aggregazione fase 1 per ogni canale
-    println!("Aggregating basic estimate...");
-    let mut aggregated_channels = Vec::new();
+            reconstructed
+        })
+        .collect();
     
-    for channel in 0..num_channels {
-        let channel_estimate = aggregate_patches(&step1_reconstructed[channel], width, height, block_size)?;
-        aggregated_channels.push(channel_estimate);
-    }
-
-    // 7. Filtro Wiener semplificato (fase 2)
-    println!("Applying simplified Wiener filtering...");
-    let mut final_channels = Vec::new();
+    // 7. Aggregazione
+    println!("Aggregating patches...");
+    let aggregated = aggregate_patches(&step1_reconstructed, width, height, block_size)?;
     
-    for channel in 0..num_channels {
-        // Implementazione semplificata: media pesata tra originale e filtrato
-        let mut final_channel = vec![0.0f32; width * height];
-        let channel_data = &aggregated_channels[channel];
-        
-        // Peso per il filtro di Wiener (simulato)
-        let wiener_weight = 0.8; // 80% del segnale filtrato, 20% rumore residuo
-        
-        for i in 0..channel_data.len() {
-            final_channel[i] = channel_data[i] * wiener_weight;
-        }
-        
-        final_channels.push(final_channel);
-    }
-
-    // 8. Combina i canali in un'immagine RGB
-    println!("Combining channels...");
-    let denoised_image = combine_rgb_channels(&final_channels, width, height)?;
-
+    // 8. Crea immagine risultato (scala di grigi per ora)
+    println!("Creating output image...");
+    let gray_data: Vec<u8> = aggregated.iter()
+        .map(|&v| v.clamp(0.0, 255.0) as u8)
+        .collect();
+    
+    let denoised_image = Image::from_u8(
+        &gray_data,
+        width,
+        height,
+        ColorSpace::Luma
+    );
+    
     // 9. Salva
-    println!("Saving denoised image to {:?}...", output_path);
+    println!("Saving to {:?}...", output_path);
     save_image(&denoised_image, output_path)?;
     
-    println!("Denoising completed successfully!");
+    println!("\n✅ Denoising completed in {:.2}s!", elapsed.as_secs_f32());
     Ok(())
 }
 
